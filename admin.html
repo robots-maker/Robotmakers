@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administración</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        table { width: 80%; margin: auto; border-collapse: collapse; }
+        th, td { border: 1px solid black; padding: 8px; }
+        button { cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <h1>Panel de Administración</h1>
+    <h2>Estado de Actividades</h2>
+    <button onclick="toggleActividad(1)">Actividad 1: <span id="estado1">Activa</span></button>
+    <button onclick="toggleActividad(2)">Actividad 2: <span id="estado2">Activa</span></button>
+    <button onclick="toggleActividad(3)">Actividad 3: <span id="estado3">Activa</span></button>
+
+    <h2>Ranking</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Actividad</th>
+                <th>Puntaje</th>
+                <th>Tiempo</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+        <tbody id="ranking"></tbody>
+    </table>
+
+    <script>
+        let actividades = JSON.parse(localStorage.getItem("actividades")) || { 1: true, 2: true, 3: true };
+        let ranking = JSON.parse(localStorage.getItem("ranking")) || [];
+
+        function toggleActividad(num) {
+            actividades[num] = !actividades[num];
+            document.getElementById(`estado${num}`).innerText = actividades[num] ? "Activa" : "Bloqueada";
+            localStorage.setItem("actividades", JSON.stringify(actividades));
+        }
+
+        function eliminarUsuario(index) {
+            if (confirm("¿Seguro que quieres eliminar este registro?")) {
+                ranking.splice(index, 1);
+                localStorage.setItem("ranking", JSON.stringify(ranking));
+                cargarDatos();
+            }
+        }
+
+        function cargarDatos() {
+            Object.keys(actividades).forEach(num => {
+                document.getElementById(`estado${num}`).innerText = actividades[num] ? "Activa" : "Bloqueada";
+            });
+
+            let rankingOrdenado = ranking.sort((a, b) => b.puntaje - a.puntaje || a.tiempo - b.tiempo);
+            let tabla = document.getElementById("ranking");
+            tabla.innerHTML = "";
+            rankingOrdenado.forEach((r, index) => {
+                let fila = `
+                    <tr>
+                        <td>${r.nombre}</td>
+                        <td>${r.actividad}</td>
+                        <td>${r.puntaje}</td>
+                        <td>${r.tiempo}s</td>
+                        <td><button onclick="eliminarUsuario(${index})">❌ Eliminar</button></td>
+                    </tr>
+                `;
+                tabla.innerHTML += fila;
+            });
+        }
+
+        window.onload = cargarDatos;
+    </script>
+
+</body>
+</html>

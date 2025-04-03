@@ -1,0 +1,147 @@
+<!DOCTYPE html><html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Examen</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        #preguntas, #resultado { display: none; }
+        .correcta { background-color: lightgreen; }
+        .incorrecta { background-color: #f88; }
+        label { display: block; margin: 5px auto; width: fit-content; }
+    </style>
+</head>
+<body><h1>Examen de Actividades</h1>
+<div id="inicio">
+    <label>Nombre: <input type="text" id="nombre"></label>
+    <label>Actividad: 
+        <select id="actividad"></select>
+    </label>
+    <button onclick="iniciarExamen()">Comenzar</button>
+</div>
+
+<div id="preguntas">
+    <h2 id="tiempo">Tiempo: 0s</h2>
+    <form id="formulario"></form>
+    <br><br>
+    <button onclick="terminarExamen()">Finalizar</button>
+</div>
+
+<div id="resultado">
+    <h2>Examen terminado</h2>
+    <p id="puntaje"></p>
+</div>
+
+<script>
+    let tiempo = 0, intervalo, nombre, actividad;
+    let ranking = JSON.parse(localStorage.getItem("ranking")) || [];
+    let actividades = JSON.parse(localStorage.getItem("actividades")) || { 1: true, 2: true, 3: true };
+
+    const preguntasPorActividad = {
+        1: [
+            { texto: "¿Para qué se usa MakeCode?", opciones: ["Para diseñar páginas web", "Para programar en bloques", "Para editar imágenes", "Para crear hojas de cálculo"], correcta: "Para programar en bloques" },
+            { texto: "¿Qué bloque se usa para ejecutar código continuamente en MakeCode?", opciones: ["al presionar A", "mostrar número", "por siempre", "pausa (ms)"], correcta: "por siempre" },
+            { texto: "¿Cuál de estos bloques pertenece a la categoría de lógica en MakeCode?", opciones: ["repetir 10 veces", "si... entonces", "mostrar icono", "girar motor"], correcta: "si... entonces" },
+            { texto: "¿Qué valor puede almacenar una variable en MakeCode?", opciones: ["Solo números", "Solo texto", "Solo imágenes", "Números y texto"], correcta: "Números y texto" },
+            { texto: "¿Cuál es el propósito del bloque 'esperar (ms)'?", opciones: ["Acelerar la ejecución del código", "Hacer que el programa se detenga por un tiempo determinado", "Reiniciar el programa", "Eliminar variables"], correcta: "Hacer que el programa se detenga por un tiempo determinado" },
+        ],
+        2: [
+            { texto: "¿Cuál es el rango de valores generados por el bloque 'elegir número aleatorio entre 0 y 10'?", opciones: ["Solo del 1 al 10", "Del 0 al 9", "Del 0 al 10", "Del -10 al 10"], correcta: "Del 0 al 10" },
+            { texto: "¿Qué bloque permite detectar la pulsación de un botón en la micro:bit?", opciones: ["mostrar icono", "al presionar A", "establecer variable", "girar motor"], correcta: "al presionar A" },
+            { texto: "¿Qué bloque permite repetir un conjunto de instrucciones hasta que una condición se cumpla?", opciones: ["por siempre", "hacer mientras", "si... entonces", "esperar (ms)"], correcta: "hacer mientras" },
+            { texto: "¿Qué hace el bloque 'enviar número por radio'?", opciones: ["Muestra un número en la pantalla", "Transmite un número a otro dispositivo por Bluetooth o radio", "Guarda un número en una variable", "Ninguna de las anteriores"], correcta: "Transmite un número a otro dispositivo por Bluetooth o radio" },
+            { texto: "Si una variable 'contador' empieza en 0 y se le suma 1 en un bucle 'por siempre', ¿qué sucede?", opciones: ["La variable se mantiene en 0", "La variable alterna entre 0 y 1", "La variable aumenta indefinidamente", "La variable disminuye"], correcta: "La variable aumenta indefinidamente" },
+        ],
+        3: [
+            { texto: "¿Qué estructura se usa para ejecutar un bloque de código solo si una condición es verdadera?", opciones: ["Bucle 'por siempre'", "Bloque 'si... entonces'", "Bloque 'esperar (ms)'", "Bloque 'repetir X veces"], correcta: "Bloque 'si... entonces'" },
+            { texto: "¿Para qué se usa el bloque 'crear función'?", opciones: ["Para definir una nueva variable", "Para organizar código en una sección reutilizable", "Para hacer un bucle infinito", "Para definir una condición lógica"], correcta: "Para organizar código en una sección reutilizable" },
+            { texto: "¿Qué permite hacer el bloque 'enviar cadena por radio'?", opciones: ["Enviar un texto a otro dispositivo", "Reproducir un sonido", "Generar un número aleatorio", "Reiniciar el programa"], correcta: "Enviar un texto a otro dispositivo" },
+            { texto: "¿Cuál de estos bloques se usa para integrar sensores externos en MakeCode?", opciones: ["leer pin analógico", "mostrar icono", "reproducir tono", "borrar pantalla"], correcta: "leer pin analógico" },
+            { texto: "¿Qué sucede si dos micro:bits están usando el mismo canal de radio para comunicarse?", opciones: ["No pueden recibir mensajes", "Se comunican correctamente", "Se apagan automáticamente", "Solo uno de los dispositivos transmite"], correcta: "Se comunican correctamente" },
+        ]
+    };
+
+    function cargarActividades() {
+        const select = document.getElementById("actividad");
+        select.innerHTML = "";
+        Object.keys(actividades).forEach(num => {
+            if (actividades[num]) {
+                let option = document.createElement("option");
+                option.value = num;
+                option.textContent = `Actividad ${num}`;
+                select.appendChild(option);
+            }
+        });
+    }
+
+    function iniciarExamen() {
+        nombre = document.getElementById("nombre").value.trim();
+        actividad = document.getElementById("actividad").value;
+
+        if (!nombre) return alert("Ingresa un nombre.");
+        if (!actividades[actividad]) return alert("Esta actividad está bloqueada.");
+        if (ranking.some(r => r.nombre === nombre && r.actividad === actividad)) {
+            return alert("Este nombre ya ha realizado esta actividad.");
+        }
+
+        document.getElementById("inicio").style.display = "none";
+        document.getElementById("preguntas").style.display = "block";
+        document.getElementById("formulario").innerHTML = "";
+        let preguntas = preguntasPorActividad[actividad];
+
+        preguntas.forEach((pregunta, index) => {
+            const contenedor = document.createElement("div");
+            const p = document.createElement("p");
+            p.textContent = `${index + 1}. ${pregunta.texto}`;
+            contenedor.appendChild(p);
+            pregunta.opciones.forEach(opcion => {
+                const label = document.createElement("label");
+                const input = document.createElement("input");
+                input.type = "radio";
+                input.name = `q${index}`;
+                input.value = opcion;
+                input.onclick = function() {
+                    if (this.checked) {
+                        const todos = document.getElementsByName(this.name);
+                        todos.forEach(i => i.disabled = true);
+                        this.parentElement.classList.add(this.value === pregunta.correcta ? 'correcta' : 'incorrecta');
+                    }
+                };
+                label.appendChild(input);
+                label.append(opcion);
+                contenedor.appendChild(label);
+            });
+            document.getElementById("formulario").appendChild(contenedor);
+        });
+
+        tiempo = 0;
+        intervalo = setInterval(() => {
+            tiempo++;
+            document.getElementById("tiempo").innerText = `Tiempo: ${tiempo}s`;
+        }, 1000);
+    }
+
+    function terminarExamen() {
+        clearInterval(intervalo);
+        let puntaje = 0;
+        const preguntas = preguntasPorActividad[actividad];
+        preguntas.forEach((pregunta, index) => {
+            const seleccionada = document.querySelector(`input[name="q${index}"]:checked`);
+            if (seleccionada) {
+                puntaje += (seleccionada.value === pregunta.correcta) ? 5 : -2;
+            }
+        });
+
+        ranking.push({ nombre, actividad, puntaje, tiempo });
+        localStorage.setItem("ranking", JSON.stringify(ranking));
+
+        document.getElementById("preguntas").style.display = "none";
+        document.getElementById("resultado").style.display = "block";
+        document.getElementById("puntaje").innerText = `Puntaje: ${puntaje}, Tiempo: ${tiempo}s`;
+    }
+
+    window.onload = cargarActividades;
+</script>
+
+</body>
+</html>
